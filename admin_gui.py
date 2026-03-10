@@ -13,13 +13,13 @@ from datetime import datetime
 BACKEND_URL = "http://127.0.0.1:5000"
 NO_PROXY_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
-#(JSON回傳PYTHON)
+#(向後端 API 發送 GET 請求)
 #-------------------------------------------------------------------------------------------
 def api_get(path: str, timeout=8):
     with NO_PROXY_OPENER.open(BACKEND_URL + path, timeout=timeout) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
-#(API POST 函式：傳入路徑與 payload 字典，送出 JSON 資料給後端)
+#(向後端 API 發送 POST 請求)
 #-------------------------------------------------------------------------------------------
 def api_post(path: str, payload: dict, timeout=8):
     data = json.dumps(payload).encode("utf-8")
@@ -35,6 +35,8 @@ def api_post(path: str, payload: dict, timeout=8):
 #(歷史訂單查詢視窗)
 #-------------------------------------------------------------------------------------------
 class HistoryWindow(tk.Toplevel):
+    #(歷史查詢清單)
+    #-------------------------------------------------------------------------------------------
     def __init__(self, master):
         super().__init__(master)
 
@@ -45,7 +47,9 @@ class HistoryWindow(tk.Toplevel):
         self.summary_var = tk.StringVar(value="日期：-    營收：0 元")
         self.build_ui()
         self.query_orders()
-
+        
+    #(查詢指定日期的歷史訂單)
+    #-------------------------------------------------------------------------------------------
     def build_ui(self):
         top = ttk.Frame(self, padding=12)
         top.pack(fill="x")
@@ -73,6 +77,8 @@ class HistoryWindow(tk.Toplevel):
         self.tv.tag_configure("served", background="#dff0d8")
         self.tv.tag_configure("normal", background="white")
 
+    #(查詢指定日期的歷史訂單)
+    #-------------------------------------------------------------------------------------------
     def query_orders(self):
         query_date = self.date_var.get().strip()
         if not query_date:
@@ -99,6 +105,8 @@ class HistoryWindow(tk.Toplevel):
                 tags=(tag,)
             )
 
+    #(刪除指定日期的歷史訂單)
+    #-------------------------------------------------------------------------------------------
     def delete_by_date(self):
         query_date = self.date_var.get().strip()
         if not query_date:
@@ -125,6 +133,8 @@ class HistoryWindow(tk.Toplevel):
 #(主視窗) 
 #-------------------------------------------------------------------------------------------
 class AdminApp(tk.Tk):
+    #(建立後台主視窗)
+    #-------------------------------------------------------------------------------------------
     def __init__(self):
         super().__init__()
         self.title("後台管理（API 控制）")
@@ -134,7 +144,8 @@ class AdminApp(tk.Tk):
         self.refresh_orders()
         self.refresh_menu()
         self.start_auto_refresh()
-        
+    #(建立後台主視窗的UI)
+    #-------------------------------------------------------------------------------------------    
     def _build_ui(self):
         top = ttk.Frame(self, padding=10)
         top.pack(fill="x")
@@ -158,7 +169,8 @@ class AdminApp(tk.Tk):
         self.nb.add(self.tab_menu, text="菜單管理")
         self._build_orders_tab()
         self._build_menu_tab()
-
+    #(訂單管理的頁面)
+    #-------------------------------------------------------------------------------------------
     def _build_orders_tab(self):
         toolbar = ttk.Frame(self.tab_orders)
         toolbar.pack(fill="x")
@@ -238,10 +250,13 @@ class AdminApp(tk.Tk):
         ttk.Label(info, text="應付：", font=("Microsoft JhengHei", 10, "bold")).grid(row=4, column=0, sticky="e", padx=(0, 8))
         ttk.Label(info, textvariable=self.total_var).grid(row=4, column=1, sticky="w")
 
-
+    #(開啟歷史訂單)
+    #-------------------------------------------------------------------------------------------
     def open_history_window(self):
         HistoryWindow(self)
-
+        
+    #(更新今日營收)
+    #-------------------------------------------------------------------------------------------
     def refresh_today_revenue(self):
         try:
             data = api_get("/api/orders/today_revenue")
@@ -249,7 +264,9 @@ class AdminApp(tk.Tk):
             self.today_revenue_var.set(f"今日營收：{revenue} 元")
         except Exception:
             self.today_revenue_var.set("今日營收：讀取失敗")
-
+            
+    #(更新訂單列表)
+    #-------------------------------------------------------------------------------------------
     def refresh_orders(self):
         try:
             rows = api_get("/api/orders?limit=200")
@@ -279,11 +296,15 @@ class AdminApp(tk.Tk):
             self.on_select_order()
             
         self.refresh_today_revenue()
-
+        
+    #(每5秒自動更新訂單及今日營收)
+    #-------------------------------------------------------------------------------------------
     def start_auto_refresh(self):
         self.refresh_orders()
         self.auto_refresh_job = self.after(5000, self.start_auto_refresh)
-
+        
+    #(讀取訂單明細)
+    #-------------------------------------------------------------------------------------------
     def on_select_order(self, _=None):
         sel = self.tv_orders.selection()
         if not sel:
@@ -314,6 +335,8 @@ class AdminApp(tk.Tk):
         for it in items:
             self.tv_items.insert("", "end", values=(it["name"], it["price"], it["qty"], it["line_total"]))
 
+    #(出餐)
+    #-------------------------------------------------------------------------------------------
     def mark_selected_served(self):
         sel = self.tv_orders.selection()
         if not sel:
@@ -327,6 +350,8 @@ class AdminApp(tk.Tk):
             return
         self.refresh_orders()
 
+    #(取消出餐)
+    #-------------------------------------------------------------------------------------------
     def unmark_selected_served(self):
         sel = self.tv_orders.selection()
         if not sel:
@@ -340,6 +365,8 @@ class AdminApp(tk.Tk):
             return
         self.refresh_orders()
 
+    #(日結按鈕)
+    #-------------------------------------------------------------------------------------------
     def close_day_reset(self):
         msg = (
             "確定要『日結清空 + 單號重製』嗎？\n\n"
@@ -357,7 +384,8 @@ class AdminApp(tk.Tk):
         messagebox.showinfo("完成", f"日結完成，已搬移 {moved_count} 筆訂單到歷史資料。")
         self.refresh_orders()
 
-
+    #(菜單管理頁面)
+    #-------------------------------------------------------------------------------------------
     def _build_menu_tab(self):
         toolbar = ttk.Frame(self.tab_menu)
         toolbar.pack(fill="x")
@@ -434,7 +462,9 @@ class AdminApp(tk.Tk):
         btns.pack(fill="x")
         ttk.Button(btns, text="💾 儲存（新增/修改）", command=self.save_menu).pack(fill="x")
         ttk.Button(btns, text="🧼 清空表單", command=self.clear_menu_form).pack(fill="x", pady=(6, 0))
-
+        
+    #(刷新菜單列表)
+    #-------------------------------------------------------------------------------------------
     def refresh_menu(self):
         try:
             rows = api_get("/api/menu/all")
@@ -452,7 +482,9 @@ class AdminApp(tk.Tk):
                 iid=r["item_key"],
                 values=(r["item_key"], r["name"], r["category"], r["price"], status)
             )
-
+            
+    #(選取菜單)
+    #-------------------------------------------------------------------------------------------
     def on_select_menu(self, _=None):
         sel = self.tv_menu.selection()
         if not sel:
@@ -465,7 +497,9 @@ class AdminApp(tk.Tk):
         self.mk_cat.set(vals[2])
         self.mk_price.set(vals[3])
         self.mk_active.set(1 if vals[4] == "上架" else 0)
-        
+
+    #(清空輸入欄的資訊(菜單新增)
+    #-------------------------------------------------------------------------------------------
     def clear_menu_form(self):
         self.mk_key.set("")
         self.mk_name.set("")
@@ -473,6 +507,8 @@ class AdminApp(tk.Tk):
         self.mk_price.set("")
         self.mk_active.set(1)
 
+    #(新增/更新菜單)
+    #-------------------------------------------------------------------------------------------
     def save_menu(self):
         item_key = self.mk_key.get().strip()
         name = self.mk_name.get().strip()
@@ -508,6 +544,8 @@ class AdminApp(tk.Tk):
         self.refresh_menu()
         self.clear_menu_form()
 
+    #(菜單上下架)
+    #-------------------------------------------------------------------------------------------
     def toggle_selected(self, is_active: int):
         sel = self.tv_menu.selection()
         if not sel:
@@ -522,7 +560,9 @@ class AdminApp(tk.Tk):
             return
 
         self.refresh_menu()
-        
+
+    #(刪除菜品)
+    #-------------------------------------------------------------------------------------------
     def delete_selected_menu(self):
         sel = self.tv_menu.selection()
         if not sel:
@@ -547,4 +587,5 @@ class AdminApp(tk.Tk):
         self.clear_menu_form()
 
 if __name__ == "__main__":
+
     AdminApp().mainloop()
