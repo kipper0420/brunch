@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+#(套件)
+#-------------------------------------------------------------------------------------------
 import tkinter as tk
 from tkinter import ttk, messagebox
 import json
@@ -8,12 +10,14 @@ import urllib.error
 BACKEND_URL = "http://127.0.0.1:5000"
 NO_PROXY_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
-
+#(向後端 API 發送 GET)
+#-------------------------------------------------------------------------------------------
 def api_get(path: str, timeout=8):
     with NO_PROXY_OPENER.open(BACKEND_URL + path, timeout=timeout) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
-
+#(向後端 API 發送 POST)
+#-------------------------------------------------------------------------------------------
 def api_post(path: str, payload: dict, timeout=8):
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
@@ -25,7 +29,8 @@ def api_post(path: str, payload: dict, timeout=8):
     with NO_PROXY_OPENER.open(req, timeout=timeout) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
-
+#(訂單折扣)
+#-------------------------------------------------------------------------------------------
 def calc_discount(subtotal: int) -> int:
     if subtotal >= 500:
         return int(subtotal * 0.15)
@@ -33,11 +38,11 @@ def calc_discount(subtotal: int) -> int:
         return int(subtotal * 0.05)
     return 0
 
-
+#(從後端取得菜單資料)
+#-------------------------------------------------------------------------------------------
 def fetch_menu_from_backend():
     return api_get("/api/menu")
-
-
+    
 root = tk.Tk()
 root.title("點餐系統")
 root.geometry("460x800")
@@ -47,10 +52,8 @@ try:
     style.theme_use("clam")
 except Exception:
     pass
-
 order_no_var = tk.StringVar(value="1")
 total_var = tk.StringVar(value="總金額：0 元")
-
 items = {}
 DISPLAY = {}
 MENU = []
@@ -58,7 +61,8 @@ CATEGORIES = []
 tabs = {}
 notebook = None
 
-
+#(更新最新訂單編號)
+#-------------------------------------------------------------------------------------------
 def refresh_order_number():
     try:
         data = api_get("/api/orders/next_number")
@@ -66,23 +70,24 @@ def refresh_order_number():
         order_no_var.set(str(next_number))
     except Exception:
         order_no_var.set("讀取失敗")
-
-
+        
+#(計算價格)
+#-------------------------------------------------------------------------------------------
 def recalc_total():
     subtotal = 0
     for _, data in items.items():
         if data["checked"].get() == 1:
             subtotal += data["price"] * data["qty_var"].get()
-
+            
     discount = calc_discount(subtotal)
     total = subtotal - discount
-
     if discount > 0:
         total_var.set(f"小計：{subtotal} 元  折扣：-{discount} 元\n應付：{total} 元")
     else:
         total_var.set(f"總金額：{total} 元")
-
-
+        
+#(整理以點菜色(購物車資料))
+#-------------------------------------------------------------------------------------------
 def get_cart_summary():
     lines = []
     subtotal = 0
@@ -97,12 +102,12 @@ def get_cart_summary():
             line_total = price * qty
             lines.append((key, name, price, qty, line_total))
             subtotal += line_total
-
     discount = calc_discount(subtotal)
     total = subtotal - discount
     return lines, subtotal, discount, total
 
-
+#(勾選)
+#-------------------------------------------------------------------------------------------
 def on_toggle(key):
     data = items[key]
     if data["checked"].get() == 1:
@@ -112,15 +117,17 @@ def on_toggle(key):
         data["qty_var"].set(0)
     recalc_total()
 
-
+#(增加數量)
+#-------------------------------------------------------------------------------------------
 def add_qty(key):
     data = items[key]
     if data["checked"].get() == 0:
         data["checked"].set(1)
     data["qty_var"].set(data["qty_var"].get() + 1)
     recalc_total()
-
-
+    
+#(減少數量)
+#-------------------------------------------------------------------------------------------
 def sub_qty(key):
     data = items[key]
     q = data["qty_var"].get()
@@ -129,21 +136,22 @@ def sub_qty(key):
     if data["qty_var"].get() == 0:
         data["checked"].set(0)
     recalc_total()
-
-
+    
+#(清除已點)
+#-------------------------------------------------------------------------------------------
 def clear_all():
     for _, data in items.items():
         data["checked"].set(0)
         data["qty_var"].set(0)
     recalc_total()
-
-
+    
+#(訂單送到後端)
+#-------------------------------------------------------------------------------------------
 def submit_order_to_backend():
     lines, subtotal, discount, total = get_cart_summary()
     if not lines:
         messagebox.showwarning("提醒", "目前沒有點餐內容，無法送出")
         return False
-
     payload = {
         "subtotal": subtotal,
         "discount": discount,
@@ -168,8 +176,9 @@ def submit_order_to_backend():
     clear_all()
     refresh_order_number()
     return True
-
-
+    
+#(建立訂單畫面)
+#-------------------------------------------------------------------------------------------
 top = ttk.Frame(root, padding=12)
 top.pack(fill="x")
 
@@ -209,7 +218,8 @@ ttk.Label(
 notebook = ttk.Notebook(root)
 notebook.pack(fill="both", expand=True, padx=12, pady=6)
 
-
+#(訂單UI)
+#-------------------------------------------------------------------------------------------
 def build_menu_ui(menu_rows):
     global MENU, DISPLAY, CATEGORIES, items, tabs
 
@@ -301,7 +311,8 @@ def build_menu_ui(menu_rows):
 
     recalc_total()
 
-
+#(購物車畫面)
+#-------------------------------------------------------------------------------------------
 def open_cart():
     win = tk.Toplevel(root)
     win.title("🛒 購物車")
@@ -348,7 +359,9 @@ def open_cart():
 
     ttk.Label(botf, text="應付：", font=("Microsoft JhengHei", 10, "bold")).grid(row=2, column=0, sticky="e", padx=(0, 10))
     ttk.Label(botf, textvariable=total_pay_var, font=("Microsoft JhengHei", 10, "bold")).grid(row=2, column=1, sticky="e")
-
+    
+    #(刷新購物車內容)
+    #-------------------------------------------------------------------------------------------
     def refresh_cart():
         tv.delete(*tv.get_children())
         lines, subtotal, discount, total = get_cart_summary()
@@ -364,6 +377,8 @@ def open_cart():
         total_pay_var.set(f"{total} 元")
         recalc_total()
 
+    #(選擇菜品)
+    #-------------------------------------------------------------------------------------------
     def get_selected_key():
         sel = tv.selection()
         if not sel:
@@ -373,6 +388,8 @@ def open_cart():
             return None
         return key
 
+    #(增加數量)
+    #-------------------------------------------------------------------------------------------
     def cart_add():
         key = get_selected_key()
         if not key:
@@ -381,6 +398,8 @@ def open_cart():
         add_qty(key)
         refresh_cart()
 
+    #(減少數量)
+    #-------------------------------------------------------------------------------------------
     def cart_sub():
         key = get_selected_key()
         if not key:
@@ -389,6 +408,8 @@ def open_cart():
         sub_qty(key)
         refresh_cart()
 
+    #(刪除菜色)
+    #-------------------------------------------------------------------------------------------
     def cart_delete():
         key = get_selected_key()
         if not key:
@@ -398,6 +419,8 @@ def open_cart():
         items[key]["qty_var"].set(0)
         refresh_cart()
 
+    #(連點增加數量)
+    #-------------------------------------------------------------------------------------------
     def on_double_click(_):
         key = get_selected_key()
         if key:
@@ -426,7 +449,8 @@ def open_cart():
 
     refresh_cart()
 
-
+#(取得更新後端菜單資料)
+#-------------------------------------------------------------------------------------------
 def refresh_menu():
     try:
         menu_rows = fetch_menu_from_backend()
@@ -456,5 +480,6 @@ try:
 except Exception as e:
     messagebox.showerror("錯誤", f"無法連線後端抓菜單：\n{e}\n\n請先啟動 backend.py")
     root.destroy()
+
 
 root.mainloop()
