@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-#(tkinter 圖形介面主套件建立視窗 tk 樣式元件與訊息視窗 urllib.request HTTP請求 datetime 取日期)
+#(套件)
 #-------------------------------------------------------------------------------------------
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -589,3 +589,4 @@ class AdminApp(tk.Tk):
 if __name__ == "__main__":
 
     AdminApp().mainloop()
+
