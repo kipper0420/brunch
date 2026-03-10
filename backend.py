@@ -1,3 +1,5 @@
+#(套件)
+#-------------------------------------------------------------------------------------------
 from flask import Flask, request, jsonify
 import sqlite3
 from datetime import datetime
@@ -5,19 +7,19 @@ from datetime import datetime
 DB_PATH = "orders.db"
 app = Flask(__name__)
 
-
+#(資料庫連線)
+#-------------------------------------------------------------------------------------------
 def db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON;")
     return conn
 
-
+#(建立資料庫表格)
+#-------------------------------------------------------------------------------------------
 def init_db():
     conn = db()
     cur = conn.cursor()
-
-    # ---------------- 目前訂單
     cur.execute("""
     CREATE TABLE IF NOT EXISTS orders (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -28,7 +30,6 @@ def init_db():
         is_served INTEGER NOT NULL DEFAULT 0
     )
     """)
-
     cur.execute("""
     CREATE TABLE IF NOT EXISTS order_items (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,8 +42,6 @@ def init_db():
         FOREIGN KEY(order_id) REFERENCES orders(id)
     )
     """)
-
-    # ---------------- 歷史訂單
     cur.execute("""
     CREATE TABLE IF NOT EXISTS history_orders (
         history_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -54,7 +53,6 @@ def init_db():
         is_served INTEGER NOT NULL DEFAULT 0
     )
     """)
-
     cur.execute("""
     CREATE TABLE IF NOT EXISTS history_order_items (
         history_item_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -68,8 +66,6 @@ def init_db():
         FOREIGN KEY(history_order_id) REFERENCES history_orders(history_id)
     )
     """)
-
-    # ---------------- 菜單
     cur.execute("""
     CREATE TABLE IF NOT EXISTS menu (
         item_key TEXT PRIMARY KEY,
@@ -79,17 +75,15 @@ def init_db():
         is_active INTEGER NOT NULL DEFAULT 1
     )
     """)
-
-    # 舊版資料庫補欄位
     try:
         cur.execute("ALTER TABLE orders ADD COLUMN is_served INTEGER NOT NULL DEFAULT 0")
     except sqlite3.OperationalError:
         pass
-
     conn.commit()
     conn.close()
 
-
+#(訂單明細)
+#-------------------------------------------------------------------------------------------
 def print_order_to_console(order_id: int):
     conn = db()
     cur = conn.cursor()
@@ -132,10 +126,8 @@ def health():
     return jsonify({"ok": True})
 
 
-# =========================
-# 菜單 API
-# =========================
-
+#(菜單給予編號)
+#-------------------------------------------------------------------------------------------
 @app.get("/api/menu")
 def get_menu_active():
     conn = db()
@@ -160,7 +152,8 @@ def get_menu_active():
     conn.close()
     return jsonify(rows)
 
-
+#(菜單給予編號)
+#-------------------------------------------------------------------------------------------
 @app.get("/api/menu/all")
 def get_menu_all():
     conn = db()
@@ -184,7 +177,8 @@ def get_menu_all():
     conn.close()
     return jsonify(rows)
 
-
+#(新增菜色)
+#-------------------------------------------------------------------------------------------
 @app.post("/api/menu/upsert")
 def upsert_menu():
     data = request.get_json(force=True)
@@ -242,7 +236,8 @@ def upsert_menu():
 
     return jsonify({"ok": True, "item_key": item_key})
 
-
+#(上下架)
+#-------------------------------------------------------------------------------------------
 @app.post("/api/menu/toggle")
 def toggle_menu():
     data = request.get_json(force=True)
@@ -264,7 +259,8 @@ def toggle_menu():
 
     return jsonify({"ok": True})
 
-
+#(刪除菜色)
+#-------------------------------------------------------------------------------------------
 @app.post("/api/menu/delete")
 def delete_menu():
     data = request.get_json(force=True)
@@ -583,4 +579,5 @@ def close_day_reset():
 
 if __name__ == "__main__":
     init_db()
+
     app.run(host="127.0.0.1", port=5000, debug=False, use_reloader=False)
