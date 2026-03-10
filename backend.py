@@ -278,10 +278,9 @@ def delete_menu():
     return jsonify({"ok": True})
 
 
-# =========================
-# 當前訂單 API
-# =========================
 
+#(點餐系統送出訂單)
+#-------------------------------------------------------------------------------------------
 @app.post("/api/orders")
 def create_order():
     data = request.get_json(force=True)
@@ -328,7 +327,8 @@ def create_order():
     print_order_to_console(order_id)
     return jsonify({"ok": True, "order_id": order_id})
 
-
+#(取得目前所有訂單)
+#-------------------------------------------------------------------------------------------
 @app.get("/api/orders")
 def list_orders():
     limit = int(request.args.get("limit", 200))
@@ -344,7 +344,8 @@ def list_orders():
     conn.close()
     return jsonify(rows)
 
-
+#(後臺點擊訂單查看明細)
+#-------------------------------------------------------------------------------------------
 @app.get("/api/orders/<int:order_id>")
 def get_order(order_id: int):
     conn = db()
@@ -371,7 +372,8 @@ def get_order(order_id: int):
 
     return jsonify({"order": dict(order), "items": items})
 
-
+#(標記是否出餐)
+#-------------------------------------------------------------------------------------------
 @app.post("/api/orders/mark_served")
 def mark_order_served():
     data = request.get_json(force=True)
@@ -389,12 +391,10 @@ def mark_order_served():
 
     return jsonify({"ok": True})
 
-
+#(今日營收)
+#-------------------------------------------------------------------------------------------
 @app.get("/api/orders/today_revenue")
 def today_revenue():
-    """
-    訂單管理頁用：只看當前訂單中的今日營收
-    """
     conn = db()
     cur = conn.cursor()
     cur.execute("""
@@ -407,14 +407,15 @@ def today_revenue():
 
     return jsonify({"today_revenue": row["total_revenue"]})
 
-
-@app.get("/api/orders/next_number")
-def next_number():
+#(訂單編號計算)
     """
-    不做每日自動重置。
+    不每日自動重置。
     只看當前訂單表的最大 id。
     日結清空後才會回到 1。
     """
+#-------------------------------------------------------------------------------------------
+@app.get("/api/orders/next_number")
+def next_number():
     conn = db()
     cur = conn.cursor()
     cur.execute("SELECT COALESCE(MAX(id), 0) AS max_id FROM orders")
@@ -423,11 +424,8 @@ def next_number():
 
     return jsonify({"next_number": int(row["max_id"]) + 1})
 
-
-# =========================
-# 歷史訂單 API
-# =========================
-
+#(歷史訂單查詢)
+#-------------------------------------------------------------------------------------------
 @app.get("/api/history/by_date")
 def history_by_date():
     query_date = request.args.get("date", "").strip()
@@ -460,7 +458,8 @@ def history_by_date():
         "orders": orders
     })
 
-
+#(刪除歷史訂單(以日去做刪除))
+#-------------------------------------------------------------------------------------------
 @app.post("/api/history/delete_by_date")
 def delete_history_by_date():
     data = request.get_json(force=True)
@@ -504,15 +503,10 @@ def delete_history_by_date():
     })
 
 
-# =========================
-# 日結 / 搬到歷史
-# =========================
-
+#(把當前訂單搬到歷史，再清空當前訂單，並重製單號 (日結的概念)
+#-------------------------------------------------------------------------------------------
 @app.post("/api/admin/close_day_reset")
 def close_day_reset():
-    """
-    把當前訂單搬到歷史，再清空當前訂單，並重製單號
-    """
     conn = db()
     cur = conn.cursor()
 
@@ -563,14 +557,10 @@ def close_day_reset():
                 it["line_total"]
             ))
 
-    # 清空目前訂單
     cur.execute("DELETE FROM order_items;")
     cur.execute("DELETE FROM orders;")
-
-    # 重置目前單號
     cur.execute("DELETE FROM sqlite_sequence WHERE name='order_items';")
     cur.execute("DELETE FROM sqlite_sequence WHERE name='orders';")
-
     conn.commit()
     conn.close()
 
@@ -581,3 +571,4 @@ if __name__ == "__main__":
     init_db()
 
     app.run(host="127.0.0.1", port=5000, debug=False, use_reloader=False)
+
